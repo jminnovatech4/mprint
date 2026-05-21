@@ -95,6 +95,17 @@ fun LeaveScreen(vm: MainViewModel) {
     var apiToDate by remember {
         mutableStateOf("")
     }
+    var selectedAvailable by remember {
+        mutableStateOf(0)
+    }
+
+    var totalDays by remember {
+        mutableLongStateOf(0L)
+    }
+
+    var showConfirm by remember {
+        mutableStateOf(false)
+    }
     SwipeRefresh(
         state = refreshState,
         onRefresh = {
@@ -209,6 +220,8 @@ fun LeaveScreen(vm: MainViewModel) {
 
                                             selectedType = leave.id
                                             selectedTypeName = leave.name
+
+                                            selectedAvailable = leave.available
                                         },
 
                                     colors = CardDefaults.cardColors(
@@ -324,10 +337,10 @@ fun LeaveScreen(vm: MainViewModel) {
                                     Spacer(Modifier.width(10.dp))
 
                                     Text(
-                                        if (fromDate.isEmpty())
+                                        if (apiFromDate.isEmpty())
                                             "Select From Date"
                                         else
-                                            fromDate
+                                            apiFromDate
                                     )
                                 }
                             }
@@ -361,10 +374,10 @@ fun LeaveScreen(vm: MainViewModel) {
                                     Spacer(Modifier.width(10.dp))
 
                                     Text(
-                                        if (toDate.isEmpty())
+                                        if (apiToDate.isEmpty())
                                             "Select To Date"
                                         else
-                                            toDate
+                                            apiToDate
                                     )
                                 }
                             }
@@ -397,10 +410,25 @@ fun LeaveScreen(vm: MainViewModel) {
 
                                 minLines = 3
                             )
+                            Spacer(Modifier.height(12.dp))
+
+                            Text(
+                                "Selected Days: $totalDays",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1565C0)
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(
+                                "Available Balance: $selectedAvailable",
+                                color = Color.Gray
+                            )
                             Spacer(Modifier.height(24.dp))
 
                             Button(
                                 onClick = {
+
                                     if (apiFromDate.isEmpty()) {
 
                                         Toast.makeText(
@@ -433,16 +461,35 @@ fun LeaveScreen(vm: MainViewModel) {
 
                                         return@Button
                                     }
-                                    vm.applyLeave(
-                                        token,
-                                        ApplyLeaveRequest(
-                                            selectedType,
-                                            fromDate,
-                                            toDate,
-                                            reason
-                                        )
-                                    )
+
+                                    if (totalDays <= 0) {
+
+                                        Toast.makeText(
+                                            context,
+                                            "Invalid leave days",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        return@Button
+                                    }
+
+                                    if (totalDays > selectedAvailable) {
+
+                                        Toast.makeText(
+                                            context,
+                                            "Leave balance exceeded",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        return@Button
+                                    }
+
+                                    showConfirm = true
                                 },
+
+                                enabled =
+                                    totalDays > 0 &&
+                                            totalDays <= selectedAvailable,
 
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -526,7 +573,11 @@ fun LeaveScreen(vm: MainViewModel) {
                                 Spacer(Modifier.height(10.dp))
 
                                 Text(
-                                    "${item.from_date} → ${item.to_date}"
+                                    "${
+                                        item.from_date.take(10)
+                                    } → ${
+                                        item.to_date.take(10)
+                                    }"
                                 )
 
                                 Spacer(Modifier.height(4.dp))
@@ -555,20 +606,80 @@ fun LeaveScreen(vm: MainViewModel) {
     }
 
     // 🔥 APPLY RESPONSE
+    if (showConfirm) {
 
+        AlertDialog(
+
+            onDismissRequest = {
+                showConfirm = false
+            },
+
+            title = {
+                Text("Confirm Leave")
+            },
+
+            text = {
+
+                Column {
+
+                    Text("Type: $selectedTypeName")
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text("Days: $totalDays")
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text("From: $fromDate")
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text("To: $toDate")
+                }
+            },
+
+            confirmButton = {
+
+                Button(
+
+                    onClick = {
+
+                        showConfirm = false
+
+                        vm.applyLeave(
+                            token,
+                            ApplyLeaveRequest(
+                                selectedType,
+                                apiFromDate,
+                                apiToDate,
+                                reason
+                            )
+                        )
+                    }
+
+                ) {
+
+                    Text("Confirm")
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
+                        showConfirm = false
+                    }
+                ) {
+
+                    Text("Cancel")
+                }
+            }
+        )
+    }
     when (applyState) {
 
         is Resource.Success -> {
-            selectedType = ""
-            selectedTypeName = ""
 
-            reason = ""
-
-            fromDate = ""
-            toDate = ""
-
-            apiFromDate = ""
-            apiToDate = ""
             LaunchedEffect(Unit) {
 
                 Toast.makeText(
@@ -576,6 +687,21 @@ fun LeaveScreen(vm: MainViewModel) {
                     applyState.data.msg,
                     Toast.LENGTH_SHORT
                 ).show()
+
+                selectedType = ""
+                selectedTypeName = ""
+
+                selectedAvailable = 0
+
+                reason = ""
+
+                fromDate = ""
+                toDate = ""
+
+                apiFromDate = ""
+                apiToDate = ""
+
+                totalDays = 0
 
                 vm.clearLeaveState()
 
@@ -605,10 +731,29 @@ fun LeaveScreen(vm: MainViewModel) {
 
         selection = CalendarSelection.Date { date ->
 
+            apiFromDate = date.toString()
+
             fromDate =
                 "${date.dayOfMonth.toString().padStart(2,'0')}/" +
                         "${date.monthValue.toString().padStart(2,'0')}/" +
                         date.year
+
+            if (
+                apiFromDate.isNotEmpty() &&
+                apiToDate.isNotEmpty()
+            ) {
+
+                val start =
+                    java.time.LocalDate.parse(apiFromDate)
+
+                val end =
+                    java.time.LocalDate.parse(apiToDate)
+
+                totalDays =
+                    java.time.temporal.ChronoUnit
+                        .DAYS
+                        .between(start, end) + 1
+            }
         }
     )
     CalendarDialog(
@@ -616,10 +761,29 @@ fun LeaveScreen(vm: MainViewModel) {
 
         selection = CalendarSelection.Date { date ->
 
+            apiToDate = date.toString()
+
             toDate =
                 "${date.dayOfMonth.toString().padStart(2,'0')}/" +
                         "${date.monthValue.toString().padStart(2,'0')}/" +
                         date.year
+
+            if (
+                apiFromDate.isNotEmpty() &&
+                apiToDate.isNotEmpty()
+            ) {
+
+                val start =
+                    java.time.LocalDate.parse(apiFromDate)
+
+                val end =
+                    java.time.LocalDate.parse(apiToDate)
+
+                totalDays =
+                    java.time.temporal.ChronoUnit
+                        .DAYS
+                        .between(start, end) + 1
+            }
         }
     )
 }
