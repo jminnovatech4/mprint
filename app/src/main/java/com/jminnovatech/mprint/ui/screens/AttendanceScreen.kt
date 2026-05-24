@@ -42,6 +42,14 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
     var currentLat by remember { mutableStateOf(0.0) }
     var currentLong by remember { mutableStateOf(0.0) }
     var distanceText by remember { mutableStateOf("--") }
+
+    var isLocationLoading by remember {
+        mutableStateOf(true)
+    }
+
+    var isGpsEnabled by remember {
+        mutableStateOf(true)
+    }
     val locationHelper = LocationHelper(context)
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -100,27 +108,15 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
-    fun calculateWorkingHours(inTime: String?, outTime: String?): String {
+    fun checkGps(): Boolean {
 
-        return try {
-            if (inTime == null || outTime == null) return "--"
+        val manager = context.getSystemService(
+            android.content.Context.LOCATION_SERVICE
+        ) as android.location.LocationManager
 
-            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-
-            val inDate = sdf.parse(inTime)
-            val outDate = sdf.parse(outTime)
-
-            val diff = outDate.time - inDate.time
-
-            val h = diff / (1000 * 60 * 60)
-            val m = (diff / (1000 * 60)) % 60
-            val s = (diff / 1000) % 60
-
-            String.format("%02d:%02d:%02d", h, m, s)
-
-        } catch (e: Exception) {
-            "--"
-        }
+        return manager.isProviderEnabled(
+            android.location.LocationManager.GPS_PROVIDER
+        )
     }
     fun formatDistance(distance: Double): String {
 
@@ -164,12 +160,37 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
                 currentLat = lat.toDoubleOrNull() ?: 0.0
                 currentLong = long.toDoubleOrNull() ?: 0.0
+
+                isLocationLoading = false
             }
 
         } else {
 
             // ask permission
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+    LaunchedEffect(Unit) {
+
+        while (true) {
+
+            if (
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+
+                locationHelper.getLocation { lat, long ->
+
+                    currentLat = lat.toDoubleOrNull() ?: 0.0
+                    currentLong = long.toDoubleOrNull() ?: 0.0
+
+                    isLocationLoading = false
+                }
+            }
+
+            kotlinx.coroutines.delay(10000) // 10 sec
         }
     }
     // ⏱️ TIMER
@@ -183,6 +204,19 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
         val token = session.getToken() ?: ""
         if (token.isNotEmpty()) {
             vm.loadProfile(token)
+        }
+    }
+    LaunchedEffect(Unit) {
+
+        isGpsEnabled = checkGps()
+
+        if (!isGpsEnabled) {
+
+            Toast.makeText(
+                context,
+                "Please Enable GPS",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
     LaunchedEffect(currentLat, currentLong, officeLat, officeLong) {
@@ -271,14 +305,67 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
             isCheckedIn = isCheckedIn,
             isCheckedOut = data.today_attendance?.attendance_out_time != null,
             isActionLoading = vm.isActionLoading,
+            isGpsEnabled = isGpsEnabled,
+            isLocationLoading = isLocationLoading,
             onCheckIn = {
-                vm.startLoading()
+
+                if (!isGpsEnabled) {
+                    Toast.makeText(
+                        context,
+                        "Please Enable GPS",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    return@AttendanceUI
+                }
+
+                if (
+                    isLocationLoading ||
+                    currentLat == 0.0 ||
+                    currentLong == 0.0
+                ) {
+
+                    Toast.makeText(
+                        context,
+                        "Fetching location...",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    return@AttendanceUI
+                }
+
                 actionType = "IN"
                 showConfirm = true
             },
 
             onCheckOut = {
-                vm.startLoading()
+
+                if (!isGpsEnabled) {
+
+                    Toast.makeText(
+                        context,
+                        "Please Enable GPS",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    return@AttendanceUI
+                }
+
+                if (
+                    isLocationLoading ||
+                    currentLat == 0.0 ||
+                    currentLong == 0.0
+                ) {
+
+                    Toast.makeText(
+                        context,
+                        "Fetching location...",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    return@AttendanceUI
+                }
+
                 actionType = "OUT"
                 showConfirm = true
             },
@@ -300,7 +387,7 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
             confirmButton = {
                 Button(onClick = {
-
+                    vm.startLoading()
                     getLocationSafe { lat, long ->
 
                         if (actionType == "IN") {
@@ -486,6 +573,8 @@ fun AttendanceUI(
     isCheckedIn: Boolean,
     isCheckedOut: Boolean,
     isActionLoading: Boolean,
+    isGpsEnabled: Boolean,
+    isLocationLoading: Boolean,
     onCheckIn: () -> Unit,
     onCheckOut: () -> Unit,
     onLeaveClick: () -> Unit
@@ -570,20 +659,115 @@ fun AttendanceUI(
         // 📍 LOCATION CARD
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(Color(0xFF0D1B2A)),
+
+            colors = CardDefaults.cardColors(
+                Color(0xFF0D1B2A)
+            ),
+
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(14.dp)) {
 
-                Text("📍 Device Location", color = Color.White)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 14.dp,
+                        vertical = 12.dp
+                    ),
 
-                Spacer(Modifier.height(6.dp))
+                verticalAlignment = Alignment.CenterVertically,
 
-                Text(
-                    "$lat , $long   |   $distance",
-                    color = Color(0xFF00E676),
-                    fontWeight = FontWeight.Bold
-                )
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+
+                // 📍 LEFT SIDE
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    if (isLocationLoading) {
+
+                        Row(
+                            verticalAlignment =
+                                Alignment.CenterVertically
+                        ) {
+
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text(
+                                "Fetching...",
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                    } else {
+
+                        Column {
+
+                            Text(
+                                "$lat , $long",
+                                color = Color(0xFF00E676),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+
+                            Text(
+                                distance,
+                                color = Color.White.copy(0.7f),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                // 🔥 RIGHT SIDE GPS STATUS
+                Surface(
+                    shape = RoundedCornerShape(50),
+
+                    color =
+                        if (isGpsEnabled)
+                            Color(0xFF00C853).copy(0.2f)
+                        else
+                            Color.Red.copy(0.2f)
+                ) {
+
+                    Text(
+                        if (isGpsEnabled)
+                            "GPS ON"
+                        else
+                            "GPS OFF",
+
+                        color =
+                            if (isGpsEnabled)
+                                Color(0xFF00E676)
+                            else
+                                Color.Red,
+
+                        modifier = Modifier.padding(
+                            horizontal = 10.dp,
+                            vertical = 5.dp
+                        ),
+
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
 
@@ -624,9 +808,16 @@ fun AttendanceUI(
             Button(
                 onClick = {
 
+
+
                     onCheckIn()
                 },
-                enabled = !isCheckedIn && !isActionLoading,
+                enabled =
+                    !isCheckedIn &&
+                            !isActionLoading &&
+                            !isLocationLoading &&
+                            lat != "0.0" &&
+                            long != "0.0",
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -651,7 +842,13 @@ fun AttendanceUI(
 
                     onCheckOut()
                 },
-                enabled = isCheckedIn && !isCheckedOut && !isActionLoading,
+                enabled =
+                    isCheckedIn &&
+                            !isCheckedOut &&
+                            !isActionLoading &&
+                            !isLocationLoading &&
+                            lat != "0.0" &&
+                            long != "0.0",
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(

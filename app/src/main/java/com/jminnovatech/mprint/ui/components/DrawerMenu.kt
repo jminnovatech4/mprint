@@ -35,6 +35,9 @@ fun DrawerMenu(onClick: (String) -> Unit) {
 
         DrawerItem("🏠 Home") { onClick("Home") }
         DrawerItem("📍 Attendance") { onClick("Attendance") }
+        DrawerItem("📝 Apply Leave") {
+            onClick("leave")
+        }
         DrawerItem("📊 Report") { onClick("Report") }
         DrawerItem("🚪 Logout") { onClick("Logout") }
     }

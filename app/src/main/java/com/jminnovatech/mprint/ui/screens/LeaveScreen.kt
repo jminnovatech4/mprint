@@ -37,11 +37,14 @@ import kotlinx.coroutines.delay
 import com.maxkeppeker.sheets.core.models.base.rememberUseCaseState
 import com.maxkeppeler.sheets.calendar.CalendarDialog
 import com.maxkeppeler.sheets.calendar.models.CalendarSelection
-
+import androidx.compose.material.icons.filled.ArrowBack
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LeaveScreen(vm: MainViewModel) {
+fun LeaveScreen(
+    vm: MainViewModel,
+    onMenuClick: () -> Unit
+){
     val fromDateState = rememberUseCaseState()
     val toDateState = rememberUseCaseState()
     val context = LocalContext.current
@@ -106,6 +109,31 @@ fun LeaveScreen(vm: MainViewModel) {
     var showConfirm by remember {
         mutableStateOf(false)
     }
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+        TopAppBar(
+
+            title = {
+                Text("Back to Home")
+            },
+
+            navigationIcon = {
+
+                IconButton(
+                    onClick = {
+                        onMenuClick()
+                    }
+                ) {
+
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = null
+                    )
+                }
+            }
+        )
     SwipeRefresh(
         state = refreshState,
         onRefresh = {
@@ -157,7 +185,7 @@ fun LeaveScreen(vm: MainViewModel) {
                         Spacer(Modifier.height(6.dp))
 
                         Text(
-                            "Professional HRMS Leave System",
+                            " HRMS Leave System",
                             color = Color.White.copy(0.9f)
                         )
                     }
@@ -786,7 +814,7 @@ fun LeaveScreen(vm: MainViewModel) {
             }
         }
     )
-}
+}}
 
 @Composable
 fun StatusChip(status: String) {
