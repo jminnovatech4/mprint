@@ -3,6 +3,10 @@ package com.jminnovatech.core.repository
 import android.util.Log
 import com.jminnovatech.core.model.ApplyLeaveRequest
 import com.jminnovatech.core.model.ApproveLeaveRequest
+import com.jminnovatech.core.model.BackToBaseRequest
+import com.jminnovatech.core.model.CompleteTaskRequest
+import com.jminnovatech.core.model.ReachClientRequest
+import com.jminnovatech.core.model.StartTaskRequest
 import com.jminnovatech.core.network.RetrofitClient
 import com.jminnovatech.core.utils.Resource
 import retrofit2.Response
@@ -64,6 +68,126 @@ open class BaseRepository {
         RetrofitClient.api.approveLeave(
             "Bearer $token",
             body
+        )
+    }
+
+
+    // ===============================
+// COMPLAINT LIST
+// ===============================
+
+    suspend fun complaintList(
+        token: String
+    ) = safeApiCall {
+
+        RetrofitClient.api.complaintList(
+            "Bearer $token"
+        )
+    }
+
+// ===============================
+// MY TASKS
+// ===============================
+
+    suspend fun myTasks(
+        token: String
+    ) = safeApiCall {
+
+        RetrofitClient.api.myTasks(
+            "Bearer $token"
+        )
+    }
+
+// ===============================
+// START TASK
+// ===============================
+
+    suspend fun startTask(
+
+        token: String,
+
+        body: StartTaskRequest
+
+    ) = safeApiCall {
+
+        RetrofitClient.api.startTask(
+
+            "Bearer $token",
+
+            body
+        )
+    }
+
+// ===============================
+// REACH CLIENT
+// ===============================
+
+    suspend fun reachClient(
+
+        token: String,
+
+        body: ReachClientRequest
+
+    ) = safeApiCall {
+
+        RetrofitClient.api.reachClient(
+
+            "Bearer $token",
+
+            body
+        )
+    }
+
+// ===============================
+// COMPLETE TASK
+// ===============================
+
+    suspend fun completeTask(
+
+        token: String,
+
+        body: CompleteTaskRequest
+
+    ) = safeApiCall {
+
+        RetrofitClient.api.completeTask(
+
+            "Bearer $token",
+
+            body
+        )
+    }
+
+// ===============================
+// BACK TO BASE
+// ===============================
+
+    suspend fun backToBase(
+
+        token: String,
+
+        body: BackToBaseRequest
+
+    ) = safeApiCall {
+
+        RetrofitClient.api.backToBase(
+
+            "Bearer $token",
+
+            body
+        )
+    }
+
+// ===============================
+// COMPLETED TASKS
+// ===============================
+
+    suspend fun completedTasks(
+        token: String
+    ) = safeApiCall {
+
+        RetrofitClient.api.completedTasks(
+            "Bearer $token"
         )
     }
 }

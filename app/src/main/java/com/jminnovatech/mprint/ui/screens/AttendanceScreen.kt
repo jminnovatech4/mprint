@@ -33,7 +33,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavHostController
 import com.jminnovatech.mprint.data.model.ProfileResponse
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import com.jminnovatech.mprint.ui.components.TaskCard
+import com.jminnovatech.mprint.ui.components.TaskDetailsDialog
+import com.jminnovatech.core.model.TaskItem
+import com.jminnovatech.mprint.ui.components.TransportDialog
 
+import com.jminnovatech.core.model.StartTaskRequest
+import com.jminnovatech.mprint.ui.components.TaskDetailsDialog
 @Composable
 fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
@@ -91,7 +99,15 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
     var showSuccess by remember { mutableStateOf(false) }
     var showError by remember { mutableStateOf(false) }
     var showWarning by remember { mutableStateOf(false) }
+    var selectedTask by remember {
 
+        mutableStateOf<TaskItem?>(null)
+    }
+
+    var showTransportDialog by remember {
+
+        mutableStateOf(false)
+    }
     var message by remember { mutableStateOf("") }
     var warningMsg by remember { mutableStateOf("") }
 
@@ -204,6 +220,7 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
         val token = session.getToken() ?: ""
         if (token.isNotEmpty()) {
             vm.loadProfile(token)
+            vm.loadComplaintList(token)
         }
     }
     LaunchedEffect(Unit) {
@@ -291,6 +308,8 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
         val data = (profileState as Resource.Success).data.data   // 🔥 MUST
 
         AttendanceUI(
+            vm = vm,
+            token = token,
             name = data.name,
             designation = data.designation,
             empId = data.employee_id.toString(),
@@ -553,12 +572,94 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
             }
         )
     }
+    if (showTransportDialog && selectedTask != null) {
 
+        TransportDialog(
+
+            onDismiss = {
+
+                showTransportDialog = false
+            },
+
+            onSubmit = { transport, odo ->
+
+                vm.startTask(
+
+                    token,
+
+                    StartTaskRequest(
+
+                        task_id = selectedTask!!.sl,
+
+                        complain_id =
+                            selectedTask!!.complain_id,
+
+                        mode_of_transport =
+                            transport,
+
+                        start_odo = odo,
+
+                        lat = currentLat.toString(),
+
+                        long = currentLong.toString()
+                    )
+                )
+
+                showTransportDialog = false
+            }
+        )
+    }
+
+    when (val startState = vm.startTaskState) {
+
+        is Resource.Loading -> {
+
+            Loader()
+        }
+
+        is Resource.Success -> {
+
+            LaunchedEffect(Unit) {
+
+                Toast.makeText(
+
+                    context,
+
+                    startState.data.msg
+                        ?: "Started",
+
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                vm.loadComplaintList(token)
+            }
+        }
+
+        is Resource.Error -> {
+
+            LaunchedEffect(Unit) {
+
+                Toast.makeText(
+
+                    context,
+
+                    startState.message
+                        ?: "Error",
+
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        else -> {}
+    }
 
 }
 
 @Composable
 fun AttendanceUI(
+    vm: MainViewModel,
+    token: String,
     name: String,
     designation: String,
     empId: String,
@@ -579,7 +680,16 @@ fun AttendanceUI(
     onCheckOut: () -> Unit,
     onLeaveClick: () -> Unit
     ) {
+    var selectedTask by remember {
 
+        mutableStateOf<TaskItem?>(null)
+    }
+
+
+    var showTransportDialog by remember {
+
+        mutableStateOf(false)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -893,7 +1003,183 @@ fun AttendanceUI(
         }
 
 
+        Spacer(Modifier.height(18.dp))
+
+        Text(
+            "Assigned Tasks",
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        when (val taskState = vm.complaintListState) {
+
+            is Resource.Loading -> {
+
+                CircularProgressIndicator()
+            }
+
+            is Resource.Success -> {
+
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(14.dp)
+                ) {
+
+                    taskState.data.data.forEach { task ->
+
+                        TaskCard(
+
+                            task = task,
+
+                            onView = {
+
+                                selectedTask = task
+                            }
+                        )
+                    }
+                }
+            }
+
+            is Resource.Error -> {
+
+                Text(
+                    taskState.message ?: "Error"
+                )
+            }
+
+            else -> {}
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        when(val state = vm.complaintListState) {
+
+            is Resource.Loading<*> -> {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    CircularProgressIndicator()
+                }
+            }
+
+            is Resource.Success<*> -> {
+
+                val data =
+                    (state as Resource.Success).data
+
+                LazyColumn(
+
+                    modifier = Modifier.heightIn(
+                        max = 500.dp
+                    )
+                ) {
+
+                    items(data.data) { task ->
+
+                        TaskCard(
+
+                            task = task,
+
+                            onView = {
+
+                                selectedTask = task
+                            }
+                        )
+
+                        Spacer(
+                            Modifier.height(12.dp)
+                        )
+                    }
+                }
+            }
+
+            is Resource.Error<*> -> {
+
+                Text(
+                    state.message ?: "Error"
+                )
+            }
+
+            else -> {}
+        }
+
     }
+    if (selectedTask != null) {
+
+        selectedTask?.let { task ->
+
+            TaskDetailsDialog(
+
+                task = task,
+
+                onDismiss = {
+
+                    selectedTask = null
+                },
+
+                onStart = {
+
+                    selectedTask = task
+
+                    showTransportDialog = true
+                },
+
+                onReached = {
+
+                }
+            )
+        }
+    }
+    if (
+        showTransportDialog &&
+        selectedTask != null
+    ) {
+
+        TransportDialog(
+
+            onDismiss = {
+
+                showTransportDialog = false
+            },
+
+            onSubmit = { transport, odo ->
+
+                showTransportDialog = false
+
+                vm.startTask(
+
+                    token = token,
+
+                    body = StartTaskRequest(
+
+                        task_id =
+                            selectedTask!!.sl,
+
+                        complain_id =
+                            selectedTask!!.complain_id,
+
+                        mode_of_transport =
+                            transport,
+
+                        start_odo = odo,
+
+                        lat = lat,
+
+                        long = long
+                    )
+                )
+            }
+        )
+    }
+
 }
 
 @Composable
