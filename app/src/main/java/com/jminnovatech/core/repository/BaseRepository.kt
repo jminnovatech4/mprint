@@ -4,11 +4,16 @@ import android.util.Log
 import com.jminnovatech.core.model.ApplyLeaveRequest
 import com.jminnovatech.core.model.ApproveLeaveRequest
 import com.jminnovatech.core.model.BackToBaseRequest
+import com.jminnovatech.core.model.CancelTaskRequest
+import com.jminnovatech.core.model.ComplaintListResponse
 import com.jminnovatech.core.model.CompleteTaskRequest
 import com.jminnovatech.core.model.ReachClientRequest
 import com.jminnovatech.core.model.StartTaskRequest
+import com.jminnovatech.core.model.TaskResponse
 import com.jminnovatech.core.network.RetrofitClient
+import com.jminnovatech.core.network.RetrofitClient.api
 import com.jminnovatech.core.utils.Resource
+import okhttp3.MultipartBody
 import retrofit2.Response
 
 open class BaseRepository {
@@ -189,5 +194,52 @@ open class BaseRepository {
         RetrofitClient.api.completedTasks(
             "Bearer $token"
         )
+    }
+    suspend fun uploadSignature(
+
+        token: String,
+
+        filePart: MultipartBody.Part
+
+    ) = safeApiCall {
+
+        RetrofitClient.api.uploadSignature(
+
+            "Bearer $token",
+
+            filePart
+        )
+    }
+    suspend fun cancelTask(
+
+        token: String,
+
+        body: CancelTaskRequest
+
+    ): Resource<TaskResponse> {
+
+        return safeApiCall {
+
+            api.cancelTask(
+
+                "Bearer $token",
+
+                body
+            )
+        }
+    }
+
+    suspend fun taskHistory(
+
+        token: String
+
+    ): Resource<ComplaintListResponse> {
+
+        return safeApiCall {
+
+            api.taskHistory(
+                "Bearer $token"
+            )
+        }
     }
 }

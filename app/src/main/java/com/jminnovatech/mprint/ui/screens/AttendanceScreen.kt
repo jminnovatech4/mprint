@@ -2,9 +2,12 @@ package com.jminnovatech.mprint.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
@@ -35,13 +38,17 @@ import androidx.navigation.NavHostController
 import com.jminnovatech.mprint.data.model.ProfileResponse
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.jminnovatech.core.model.CompleteTaskRequest
 import com.jminnovatech.mprint.ui.components.TaskCard
 import com.jminnovatech.mprint.ui.components.TaskDetailsDialog
 import com.jminnovatech.core.model.TaskItem
 import com.jminnovatech.mprint.ui.components.TransportDialog
 
 import com.jminnovatech.core.model.StartTaskRequest
+import com.jminnovatech.mprint.ui.components.AttendanceUI
+import com.jminnovatech.mprint.ui.components.CompleteWorkDialog
 import com.jminnovatech.mprint.ui.components.TaskDetailsDialog
+@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
@@ -81,6 +88,8 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
     val token = session.getToken() ?: ""
     val state = vm.attendanceState
+    val complaintState =
+        vm.complaintListState
     val isLoading = state is Resource.Loading
     val profileState = vm.profileState
     val officeLat = (profileState as? Resource.Success<ProfileResponse>)
@@ -105,6 +114,10 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
     }
 
     var showTransportDialog by remember {
+
+        mutableStateOf(false)
+    }
+    var showCompleteDialog by remember {
 
         mutableStateOf(false)
     }
@@ -162,6 +175,7 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
         return R * c
     }
+
 
     LaunchedEffect(Unit) {
 
@@ -309,6 +323,7 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
         AttendanceUI(
             vm = vm,
+            complaintState = complaintState,
             token = token,
             name = data.name,
             designation = data.designation,
@@ -653,534 +668,57 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
 
         else -> {}
     }
+    when (val reachState = vm.reachClientState) {
 
-}
+        is Resource.Loading -> {
 
-@Composable
-fun AttendanceUI(
-    vm: MainViewModel,
-    token: String,
-    name: String,
-    designation: String,
-    empId: String,
-    present: String,
-    leave: String,
-    lat: String,
-    long: String,
-    distance: String,
-    inTime: String?,
-    outTime: String?,
-    workingTime: String,
-    isCheckedIn: Boolean,
-    isCheckedOut: Boolean,
-    isActionLoading: Boolean,
-    isGpsEnabled: Boolean,
-    isLocationLoading: Boolean,
-    onCheckIn: () -> Unit,
-    onCheckOut: () -> Unit,
-    onLeaveClick: () -> Unit
-    ) {
-    var selectedTask by remember {
+            Loader()
+        }
 
-        mutableStateOf<TaskItem?>(null)
-    }
+        is Resource.Success -> {
 
+            LaunchedEffect(reachState) {
 
-    var showTransportDialog by remember {
+                Toast.makeText(
 
-        mutableStateOf(false)
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(5.dp)
-    ) {
+                    context,
 
-        // 🔵 PROFILE CARD
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF1976D2), Color(0xFF26C6DA))
-                        )
-                    )
-                    .padding(5.dp)
-            ) {
+                    reachState.data.msg
+                        ?: "Reached Client",
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Toast.LENGTH_SHORT
+                ).show()
 
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(40.dp)
-                    )
+                // 🔥 RELOAD TASKS
+                vm.loadComplaintList(token)
 
-                    Spacer(Modifier.width(5.dp))
-
-                    Column {
-                        Text(name, color = Color.White, fontSize = 18.sp)
-                        Text(designation, color = Color.White.copy(0.8f))
-                        Text("ID: $empId", color = Color.White.copy(0.8f))
-                    }
-
-                    Spacer(Modifier.weight(1f))
-
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-                }
+                // 🔥 CLOSE DIALOG
+                selectedTask = null
             }
         }
 
-        Spacer(Modifier.height(5.dp))
+        is Resource.Error -> {
 
-        // 🟢 PRESENT / 🔴 LEAVE
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            LaunchedEffect(reachState) {
 
-            StatCard("Present", present, Color(0xFF00C853), Modifier.weight(1f))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        onLeaveClick()
-                    }
-            ) {
-                StatCard(
-                    "Leave",
-                    leave,
-                    Color(0xFFD50000),
-                    Modifier.fillMaxWidth()
-                )
+                Toast.makeText(
+
+                    context,
+
+                    reachState.message
+                        ?: "Error",
+
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        // 📍 LOCATION CARD
-        Card(
-            shape = RoundedCornerShape(16.dp),
-
-            colors = CardDefaults.cardColors(
-                Color(0xFF0D1B2A)
-            ),
-
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = 14.dp,
-                        vertical = 12.dp
-                    ),
-
-                verticalAlignment = Alignment.CenterVertically,
-
-                horizontalArrangement =
-                    Arrangement.SpaceBetween
-            ) {
-
-                // 📍 LEFT SIDE
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-
-                    Spacer(Modifier.width(8.dp))
-
-                    if (isLocationLoading) {
-
-                        Row(
-                            verticalAlignment =
-                                Alignment.CenterVertically
-                        ) {
-
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.White
-                            )
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Text(
-                                "Fetching...",
-                                color = Color.White,
-                                fontSize = 12.sp
-                            )
-                        }
-
-                    } else {
-
-                        Column {
-
-                            Text(
-                                "$lat , $long",
-                                color = Color(0xFF00E676),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-
-                            Text(
-                                distance,
-                                color = Color.White.copy(0.7f),
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
-
-                // 🔥 RIGHT SIDE GPS STATUS
-                Surface(
-                    shape = RoundedCornerShape(50),
-
-                    color =
-                        if (isGpsEnabled)
-                            Color(0xFF00C853).copy(0.2f)
-                        else
-                            Color.Red.copy(0.2f)
-                ) {
-
-                    Text(
-                        if (isGpsEnabled)
-                            "GPS ON"
-                        else
-                            "GPS OFF",
-
-                        color =
-                            if (isGpsEnabled)
-                                Color(0xFF00E676)
-                            else
-                                Color.Red,
-
-                        modifier = Modifier.padding(
-                            horizontal = 10.dp,
-                            vertical = 5.dp
-                        ),
-
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // ⏱ WORKING TIME CENTER
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(6.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(5.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
-                Text("Total Working Time")
-
-                Spacer(Modifier.height(10.dp))
-
-                Text(
-                    workingTime,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF00C853)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(5.dp))
-
-        // 🔘 IN / OUT BUTTONS
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-
-            // IN BUTTON
-            Button(
-                onClick = {
-
-
-
-                    onCheckIn()
-                },
-                enabled =
-                    !isCheckedIn &&
-                            !isActionLoading &&
-                            !isLocationLoading &&
-                            lat != "0.0" &&
-                            long != "0.0",
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(30.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCheckedIn) Color.LightGray else Color(0xFF22C55E)
-                )
-            ) {
-
-                if (isActionLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
-                } else {
-                    Text(if (isCheckedIn) "✔ IN" else "IN")
-                }
-            }
-
-            // OUT BUTTON
-            Button(
-                onClick = {
-
-                    onCheckOut()
-                },
-                enabled =
-                    isCheckedIn &&
-                            !isCheckedOut &&
-                            !isActionLoading &&
-                            !isLocationLoading &&
-                            lat != "0.0" &&
-                            long != "0.0",
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(30.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCheckedOut) Color.LightGray else Color(0xFF2563EB)
-                )
-            ) {
-
-                if (isActionLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
-                } else {
-                    Text(if (isCheckedOut) "✔ OUT" else "OUT")
-                }
-            }}
-        Spacer(Modifier.height(16.dp))
-
-        // 🕒 IN OUT TIME
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-
-                Column {
-                    Text("Attendance In", color = Color(0xFF00C853))
-                    Text(inTime ?: "--")
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Attendance Out", color = Color.Red)
-                    Text(outTime ?: "--")
-                }
-            }
-        }
-
-
-        Spacer(Modifier.height(18.dp))
-
-        Text(
-            "Assigned Tasks",
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        when (val taskState = vm.complaintListState) {
-
-            is Resource.Loading -> {
-
-                CircularProgressIndicator()
-            }
-
-            is Resource.Success -> {
-
-                Column(
-                    verticalArrangement =
-                        Arrangement.spacedBy(14.dp)
-                ) {
-
-                    taskState.data.data.forEach { task ->
-
-                        TaskCard(
-
-                            task = task,
-
-                            onView = {
-
-                                selectedTask = task
-                            }
-                        )
-                    }
-                }
-            }
-
-            is Resource.Error -> {
-
-                Text(
-                    taskState.message ?: "Error"
-                )
-            }
-
-            else -> {}
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        when(val state = vm.complaintListState) {
-
-            is Resource.Loading<*> -> {
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-
-                    contentAlignment = Alignment.Center
-                ) {
-
-                    CircularProgressIndicator()
-                }
-            }
-
-            is Resource.Success<*> -> {
-
-                val data =
-                    (state as Resource.Success).data
-
-                LazyColumn(
-
-                    modifier = Modifier.heightIn(
-                        max = 500.dp
-                    )
-                ) {
-
-                    items(data.data) { task ->
-
-                        TaskCard(
-
-                            task = task,
-
-                            onView = {
-
-                                selectedTask = task
-                            }
-                        )
-
-                        Spacer(
-                            Modifier.height(12.dp)
-                        )
-                    }
-                }
-            }
-
-            is Resource.Error<*> -> {
-
-                Text(
-                    state.message ?: "Error"
-                )
-            }
-
-            else -> {}
-        }
-
-    }
-    if (selectedTask != null) {
-
-        selectedTask?.let { task ->
-
-            TaskDetailsDialog(
-
-                task = task,
-
-                onDismiss = {
-
-                    selectedTask = null
-                },
-
-                onStart = {
-
-                    selectedTask = task
-
-                    showTransportDialog = true
-                },
-
-                onReached = {
-
-                }
-            )
-        }
-    }
-    if (
-        showTransportDialog &&
-        selectedTask != null
-    ) {
-
-        TransportDialog(
-
-            onDismiss = {
-
-                showTransportDialog = false
-            },
-
-            onSubmit = { transport, odo ->
-
-                showTransportDialog = false
-
-                vm.startTask(
-
-                    token = token,
-
-                    body = StartTaskRequest(
-
-                        task_id =
-                            selectedTask!!.sl,
-
-                        complain_id =
-                            selectedTask!!.complain_id,
-
-                        mode_of_transport =
-                            transport,
-
-                        start_odo = odo,
-
-                        lat = lat,
-
-                        long = long
-                    )
-                )
-            }
-        )
+        else -> {}
     }
 
 }
+
+
 
 @Composable
 fun StatCard(title: String, value: String, color: Color, modifier: Modifier) {

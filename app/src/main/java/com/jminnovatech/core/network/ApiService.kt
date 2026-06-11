@@ -4,6 +4,7 @@ import com.jminnovatech.core.model.ApplyLeaveRequest
 import com.jminnovatech.core.model.ApproveLeaveRequest
 import com.jminnovatech.core.model.BackToBaseRequest
 import com.jminnovatech.core.model.BaseResponse
+import com.jminnovatech.core.model.CancelTaskRequest
 import com.jminnovatech.core.model.LeaveTypeResponse
 import com.jminnovatech.core.model.LoginRequest
 import com.jminnovatech.core.model.LoginResponse
@@ -18,6 +19,10 @@ import com.jminnovatech.core.model.ComplaintListResponse
 import com.jminnovatech.core.model.CompleteTaskRequest
 import com.jminnovatech.core.model.ReachClientRequest
 import com.jminnovatech.core.model.StartTaskRequest
+import com.jminnovatech.core.model.TaskResponse
+import okhttp3.MultipartBody
+import retrofit2.http.Multipart
+import retrofit2.http.Part
 
 interface ApiService {
     @POST("api/api/login")
@@ -162,6 +167,38 @@ interface ApiService {
 
     @POST("api/api/completed-tasks")
     suspend fun completedTasks(
+
+        @Header("Authorization")
+        token: String
+
+    ): Response<ComplaintListResponse>
+
+    @Multipart
+    @POST("api/api/upload-signature")
+    suspend fun uploadSignature(
+
+        @Header("Authorization")
+        token: String,
+
+        @Part
+        signature: MultipartBody.Part
+
+    ): Response<Map<String, Any>>
+
+
+    @POST("api/api/cancel-task")
+    suspend fun cancelTask(
+
+        @Header("Authorization")
+        token: String,
+
+        @Body
+        body: CancelTaskRequest
+
+    ): Response<TaskResponse>
+
+    @POST("api/api/task-history")
+    suspend fun taskHistory(
 
         @Header("Authorization")
         token: String

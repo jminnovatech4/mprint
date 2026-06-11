@@ -29,12 +29,17 @@ fun TaskDetailsDialog(
 
     onStart: () -> Unit,
 
-    onReached: () -> Unit
+    onReached: () -> Unit,
+    onCancel: () -> Unit,
+    onComplete: () -> Unit,
+    onBackToBase: () -> Unit
 ) {
 
     val currentStep = remember(task) {
 
         when {
+
+            task.task_status == "Cancelled" -> 6
 
             task.back_to_base != null -> 5
 
@@ -347,10 +352,17 @@ fun TaskDetailsDialog(
                     title = "Complete Work",
 
                     subtitle =
-                        if (task.complete_work == null)
-                            "Pending"
-                        else
-                            "Work Completed",
+                        when {
+
+                            task.task_status == "Cancelled" ->
+                                "Task Cancelled"
+
+                            task.complete_work == null ->
+                                "Pending"
+
+                            else ->
+                                "Work Completed"
+                        },
 
                     completed =
                         currentStep >= 4,
@@ -426,7 +438,28 @@ fun TaskDetailsDialog(
 
                 // ACTION BUTTONS
                 when {
+                    task.task_status == "Cancelled" -> {
 
+                        Card(
+
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFFEBEE)
+                            )
+
+                        ) {
+
+                            Text(
+
+                                text = "TASK CANCELLED",
+
+                                modifier = Modifier.padding(16.dp),
+
+                                color = Color.Red,
+
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                     // START
                     task.start_base == null -> {
 
@@ -451,22 +484,96 @@ fun TaskDetailsDialog(
                     task.start_base != null &&
                             task.reach_client == null -> {
 
+                        if (
+                            task.start_base != null &&
+                            task.reach_client == null
+                        ) {
+
+                            GradientButton(
+
+                                text = "REACHED CLIENT",
+
+                                icon = Icons.Default.LocationOn,
+
+                                color1 = Color(0xFFFF9800),
+
+                                color2 = Color(0xFFFFB74D),
+
+                                onClick = onReached
+                            )
+                        }
+                    }
+                    // COMPLETE WORK
+// COMPLETE WORK / CANCEL
+// COMPLETE WORK / CANCEL
+                    task.reach_client != null &&
+                            task.complete_work == null &&
+                            task.task_status != "Cancelled" -> {
+
+                        Column {
+
+                            GradientButton(
+
+                                text = "COMPLETE WORK",
+
+                                icon = Icons.Default.Build,
+
+                                color1 = Color(0xFF7B1FA2),
+
+                                color2 = Color(0xFFBA68C8),
+
+                                onClick = onComplete
+                            )
+
+                            Spacer(
+                                Modifier.height(10.dp)
+                            )
+
+                            GradientButton(
+
+                                text = "CANCEL TASK",
+
+                                icon = Icons.Default.Close,
+
+                                color1 = Color(0xFFD32F2F),
+
+                                color2 = Color(0xFFFF5252),
+
+                                onClick = onCancel
+                            )
+                        }
+                    }
+
+
+                    // bACK TO BASE
+                    task.complete_work != null &&
+                            task.back_to_base == null -> {
+
                         GradientButton(
 
-                            text = "REACHED CLIENT",
+                            text = "BACK TO BASE",
 
-                            icon =
-                                Icons.Default.LocationOn,
+                            icon = Icons.Default.Home,
 
-                            color1 =
-                                Color(0xFFFF9800),
+                            color1 = Color(0xFFE91E63),
 
-                            color2 =
-                                Color(0xFFFFB74D),
+                            color2 = Color(0xFFF06292),
 
-                            onClick = onReached
+                            onClick = onBackToBase
                         )
                     }
+                    else -> {
+
+                        Text(
+
+                            text = "Task Completed",
+
+                            color = Color(0xFF16A34A),
+
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
                 }
 
                 Spacer(Modifier.height(14.dp))

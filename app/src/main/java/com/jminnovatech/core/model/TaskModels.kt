@@ -133,6 +133,7 @@ data class ReachClientRequest(
 
 data class CompleteTaskRequest(
 
+
     val task_id: Int,
 
     val complain_id: String,
@@ -143,9 +144,17 @@ data class CompleteTaskRequest(
 
     val signature_link: String,
 
+    val customer_name: String,
+
+    val customer_phone: String,
+
+    val customer_designation: String,
+
     val lat: String,
 
-    val long: String
+    val long: String,
+
+    val work_status: String
 )
 
 // ===============================
@@ -162,5 +171,23 @@ data class BackToBaseRequest(
 
     val lat: String,
 
+    val long: String,
+    val complain_id: String
+)
+data class CancelTaskRequest(
+
+    val task_id: Int,
+
+    val complain_id: String,
+
+    val cancel_reason: String,
+
+    val end_odo: String,
+
+    val travel_cost: String,
+
+    val lat: String,
+
     val long: String
 )
+

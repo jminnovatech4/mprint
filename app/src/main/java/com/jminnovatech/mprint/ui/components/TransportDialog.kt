@@ -19,7 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 @Composable
 fun TransportDialog(
 
@@ -36,11 +37,13 @@ fun TransportDialog(
     var transport by remember {
         mutableStateOf("Bike")
     }
-
+    var odoError by remember {
+        mutableStateOf(false)
+    }
     var odo by remember {
         mutableStateOf("")
     }
-
+    val context = LocalContext.current
     Dialog(
         onDismissRequest = onDismiss
     ) {
@@ -210,8 +213,13 @@ fun TransportDialog(
                         value = odo,
 
                         onValueChange = {
+
                             odo = it
+
+                            odoError = false
                         },
+
+                        isError = odoError,
 
                         modifier = Modifier.fillMaxWidth(),
 
@@ -221,7 +229,17 @@ fun TransportDialog(
                             Text("Enter Start ODO")
                         }
                     )
+                    if (odoError) {
 
+                        Text(
+
+                            text = "Start ODO is required",
+
+                            color = MaterialTheme.colorScheme.error,
+
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     Spacer(Modifier.height(20.dp))
                 }
 
@@ -229,8 +247,25 @@ fun TransportDialog(
 
                     onClick = {
 
+                        if (
+
+                            transport == "Bike"
+
+                            &&
+
+                            odo.isBlank()
+
+                        ) {
+
+                            odoError = true
+
+                            return@Button
+                        }
+
                         onSubmit(
+
                             transport,
+
                             odo
                         )
                     },

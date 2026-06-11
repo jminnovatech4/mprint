@@ -1,11 +1,13 @@
     package com.jminnovatech.mprint.viewmodel
 
+    import android.util.Log
     import androidx.compose.runtime.*
     import androidx.lifecycle.ViewModel
     import androidx.lifecycle.viewModelScope
     import com.jminnovatech.core.model.ApplyLeaveRequest
     import com.jminnovatech.core.model.BackToBaseRequest
     import com.jminnovatech.core.model.BaseResponse
+
     import com.jminnovatech.core.model.LeaveTypeResponse
     import com.jminnovatech.core.model.LoginRequest
     import com.jminnovatech.core.model.LoginResponse
@@ -20,6 +22,15 @@
     import com.jminnovatech.core.model.CompleteTaskRequest
     import com.jminnovatech.core.model.ReachClientRequest
     import com.jminnovatech.core.model.StartTaskRequest
+
+    import okhttp3.MediaType.Companion.toMediaType
+    import okhttp3.MultipartBody
+    import okhttp3.RequestBody.Companion.asRequestBody
+    import java.io.File
+    import androidx.lifecycle.viewModelScope
+    import kotlinx.coroutines.launch
+    import com.jminnovatech.core.model.TaskResponse
+    import com.jminnovatech.core.model.CancelTaskRequest
     class MainViewModel : ViewModel() {
 
         private val repo = Repository()
@@ -202,8 +213,28 @@
                 complaintListState =
                     Resource.Loading()
 
-                complaintListState =
+                val result =
                     repo.complaintList(token)
+
+                if (
+                    result is Resource.Success
+                ) {
+
+                    Log.d(
+                        "TASK_SIZE",
+                        "Total = ${result.data.data.size}"
+                    )
+
+                    result.data.data.forEach {
+
+                        Log.d(
+                            "TASK_ROW",
+                            "SL=${it.sl} ID=${it.complain_id}"
+                        )
+                    }
+                }
+
+                complaintListState = result
             }
         }
 
@@ -333,5 +364,122 @@
                         body
                     )
             }
+        }fun clearBackState() {
+
+            backToBaseState = null
         }
+        fun clearReachState() {
+
+            reachClientState = null
+        }
+
+        fun clearStartTaskState() {
+
+            startTaskState = null
+        }
+        fun clearCompleteTaskState() {
+
+            completeTaskState = null
+        }
+        fun uploadSignature(
+
+            token: String,
+
+            file: File,
+
+            onResult: (String) -> Unit
+        ) {
+
+            viewModelScope.launch {
+
+                try {
+
+                    val requestFile =
+
+                        file.asRequestBody(
+                            "image/png".toMediaType()
+                        )
+
+                    val body = MultipartBody.Part.createFormData(
+
+                        "signature",
+
+                        file.name,
+
+                        requestFile
+                    )
+
+                    val response =
+                        repo.uploadSignature(
+                            token,
+                            body
+                        )
+
+                    if (
+                        response is Resource.Success
+                    ) {
+
+                        val url =
+                            response.data["url"]
+                                .toString()
+
+                        onResult(url)
+                    }
+
+                } catch (e: Exception) {
+
+                    e.printStackTrace()
+                }
+            }
+        }
+        var cancelTaskState by mutableStateOf<
+                Resource<TaskResponse>
+                >(
+            Resource.Success(
+                TaskResponse(
+                    status = false,
+                    msg = null
+                )
+            )
+        )
+
+
+        fun cancelTask(
+
+            token: String,
+
+            body: CancelTaskRequest
+        ) {
+
+            viewModelScope.launch {
+
+                cancelTaskState =
+                    Resource.Loading()
+
+                cancelTaskState =
+                    repo.cancelTask(
+                        token,
+                        body
+                    )
+            }
+        }
+        var historyState by mutableStateOf<
+                Resource<ComplaintListResponse>
+                >(Resource.Loading())
+        fun loadHistory(
+            token: String
+        ) {
+
+            viewModelScope.launch {
+
+                historyState =
+                    Resource.Loading()
+
+                historyState =
+                    repo.taskHistory(
+                        token
+                    )
+            }
+        }
+
     }
