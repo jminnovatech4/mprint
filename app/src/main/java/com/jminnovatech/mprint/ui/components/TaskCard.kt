@@ -3,6 +3,7 @@ package com.jminnovatech.mprint.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -19,7 +20,8 @@ fun TaskCard(
 
     task: TaskItem,
 
-    onView: () -> Unit
+    onView: () -> Unit,
+    onCancel: () -> Unit
 ) {
 
     Card(
@@ -98,29 +100,81 @@ fun TaskCard(
 
             Spacer(Modifier.height(14.dp))
 
-            Button(
+            Row(
 
-                onClick = onView,
+                modifier =
+                    Modifier.fillMaxWidth(),
 
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-
-                shape = RoundedCornerShape(14.dp),
-
-                colors = ButtonDefaults.buttonColors(
-                    Color(0xFF2563EB)
-                )
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp)
             ) {
 
-                Icon(
-                    Icons.Default.Visibility,
-                    contentDescription = null
-                )
+                Button(
 
-                Spacer(Modifier.width(8.dp))
+                    onClick = {
 
-                Text("VIEW DETAILS")
+                        onView()
+                    },
+
+                    modifier =
+                        Modifier.weight(0.7f),
+
+                    shape =
+                        RoundedCornerShape(14.dp)
+                ) {
+
+                    Icon(
+
+                        Icons.Default.Visibility,
+
+                        contentDescription = null
+                    )
+
+                    Spacer(
+                        Modifier.width(6.dp)
+                    )
+
+                    Text(
+                        "VIEW DETAILS"
+                    )
+                }
+
+                if (
+
+                    task.start_base != null &&
+
+                    task.reach_client == null
+
+                ) {
+
+                    Button(
+
+                        onClick = {
+
+                            onCancel()
+                        },
+
+                        modifier =
+                            Modifier.weight(0.3f),
+
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor =
+                                    Color(0xFFD32F2F)
+                            ),
+
+                        shape =
+                            RoundedCornerShape(14.dp)
+                    ) {
+
+                        Icon(
+
+                            Icons.Default.Close,
+
+                            contentDescription = null
+                        )
+                    }
+                }
             }
         }
     }

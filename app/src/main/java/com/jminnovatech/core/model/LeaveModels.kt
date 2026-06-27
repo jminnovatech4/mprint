@@ -40,3 +40,45 @@ data class ApproveLeaveRequest(
     val leave_id: Int,
     val action: String
 )
+
+
+
+data class ManagerLeaveResponse(
+
+    val status:Boolean,
+
+    val data:List<ManagerLeave>
+
+)
+
+data class ManagerLeave(
+
+    val id:Int,
+
+    val employee_id:Int,
+
+    val leave_type:String,
+
+    val from_date:String,
+
+    val to_date:String,
+
+    val reason:String?,
+
+    val status:String,
+
+    val days:Int,
+
+    val employee:EmployeeInfo
+
+)
+
+data class EmployeeInfo(
+
+    val employee_id:Int,
+
+    val name:String,
+
+    val designation:String?
+
+)

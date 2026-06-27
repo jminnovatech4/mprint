@@ -235,6 +235,7 @@ fun AttendanceScreen(vm: MainViewModel, navController: NavHostController) {
         if (token.isNotEmpty()) {
             vm.loadProfile(token)
             vm.loadComplaintList(token)
+            vm.loadManagerLeaves(token)
         }
     }
     LaunchedEffect(Unit) {

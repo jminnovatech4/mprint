@@ -28,9 +28,12 @@
     import okhttp3.RequestBody.Companion.asRequestBody
     import java.io.File
     import androidx.lifecycle.viewModelScope
+    import com.jminnovatech.core.model.ApproveLeaveRequest
     import kotlinx.coroutines.launch
     import com.jminnovatech.core.model.TaskResponse
     import com.jminnovatech.core.model.CancelTaskRequest
+    import com.jminnovatech.core.model.ManagerLeaveResponse
+
     class MainViewModel : ViewModel() {
 
         private val repo = Repository()
@@ -140,12 +143,13 @@
 
             // 🔥 profile reload
             loadProfile(token)
-
+            loadManagerLeaves(token)
             // 🔥 attendance reset (optional)
             clearState()
 
             // 🔥 timer reset (optional)
             clearCheckIn()
+
         }
         var isActionLoading by mutableStateOf(false)
             private set
@@ -480,6 +484,79 @@
                         token
                     )
             }
+        }
+        var managerLeaveState by mutableStateOf<
+                Resource<ManagerLeaveResponse>?
+                >(null)
+
+            private set
+        fun loadManagerLeaves(
+
+            token:String
+
+        ){
+
+            viewModelScope.launch{
+
+                managerLeaveState=
+
+                    Resource.Loading()
+
+                managerLeaveState=
+
+                    repo.managerLeaves(token)
+
+            }
+
+        }
+
+
+        var approveLeaveState by mutableStateOf<
+                Resource<BaseResponse<Any>>?
+                >(null)
+
+            private set
+
+        fun approveLeave(
+
+            token:String,
+
+            leaveId:Int,
+
+            action:String
+
+        ){
+
+            viewModelScope.launch{
+
+                approveLeaveState=
+
+                    Resource.Loading()
+
+                approveLeaveState=
+
+                    repo.approveLeave(
+
+                        token,
+
+                        ApproveLeaveRequest(
+
+                            leaveId,
+
+                            action
+
+                        )
+
+                    )
+
+            }
+
+        }
+
+        fun clearApproveState(){
+
+            approveLeaveState=null
+
         }
 
     }

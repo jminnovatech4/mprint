@@ -23,11 +23,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
-import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,7 +61,14 @@ import com.jminnovatech.mprint.viewmodel.MainViewModel
 import com.jminnovatech.core.model.BackToBaseRequest
 import com.jminnovatech.core.model.CancelTaskRequest
 import java.io.File
-
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun AttendanceUI(
@@ -117,6 +121,10 @@ fun AttendanceUI(
         mutableStateOf(false)
     }
     var showHistoryDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showLeaveApprovalDialog by remember {
         mutableStateOf(false)
     }
     when (val reachState = vm.reachClientState) {
@@ -173,6 +181,47 @@ fun AttendanceUI(
                 vm.loadComplaintList(token)
             }
         }
+    }
+
+    LaunchedEffect(vm.approveLeaveState){
+
+        when(val state=vm.approveLeaveState){
+
+            is Resource.Success->{
+
+                Toast.makeText(
+
+                    context,
+
+                    "Leave ${state.data.msg}",
+
+                    Toast.LENGTH_SHORT
+
+                ).show()
+
+                vm.loadManagerLeaves(token)
+
+                vm.clearApproveState()
+
+            }
+
+            is Resource.Error->{
+
+                Toast.makeText(
+
+                    context,
+
+                    state.message?:"Error",
+
+                    Toast.LENGTH_SHORT
+
+                ).show()
+
+            }
+
+            else->{}
+        }
+
     }
     Column(
         modifier = Modifier
@@ -247,7 +296,36 @@ fun AttendanceUI(
                 )
             }
         }
+        Spacer(Modifier.height(12.dp))
+        val pendingCount =
 
+            (vm.managerLeaveState as? Resource.Success)
+
+                ?.data
+
+                ?.data
+
+                ?.size ?: 0
+        if (pendingCount > 0) {
+
+            Spacer(Modifier.height(12.dp))
+
+            ManagerApprovalCard(
+
+                pendingCount = pendingCount,
+
+                onClick = {
+
+                    vm.loadManagerLeaves(token)
+
+                    showLeaveApprovalDialog = true
+
+                }
+
+            )
+
+            Spacer(Modifier.height(12.dp))
+        }
         Spacer(Modifier.height(12.dp))
 
         // 📍 LOCATION CARD
@@ -679,8 +757,14 @@ fun AttendanceUI(
 
                                     onView = {
 
-                                        selectedTask =
-                                            task
+                                        selectedTask = task
+                                    },
+
+                                    onCancel = {
+
+                                        selectedTask = task
+
+                                        showCancelDialog = true
                                     }
                                 )
                             }
@@ -855,44 +939,7 @@ fun AttendanceUI(
                 )
             }
         )
-        if (showHistoryDialog) {
 
-            AlertDialog(
-
-                onDismissRequest = {
-
-                    showHistoryDialog = false
-                },
-
-                confirmButton = {
-
-                    TextButton(
-
-                        onClick = {
-
-                            showHistoryDialog = false
-                        }
-                    ) {
-
-                        Text("Close")
-                    }
-                },
-
-                title = {
-
-                    Text(
-                        "Last 30 Days History"
-                    )
-                },
-
-                text = {
-
-                    Text(
-                        "History UI Loading..."
-                    )
-                }
-            )
-        }
     }
 
     if (
@@ -1139,7 +1186,384 @@ fun AttendanceUI(
             }
         )
     }
+    if (showHistoryDialog) {
+
+        val historyState = vm.historyState
+
+        Dialog(
+
+            onDismissRequest = {
+
+                showHistoryDialog = false
+            }
+
+        ) {
+
+            Card(
+
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.90f),
+
+                shape = RoundedCornerShape(24.dp)
+
+            ) {
+
+                Column(
+
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF8FAFC))
+                ) {
+
+                    // HEADER
+
+                    Row(
+
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF2563EB))
+                            .padding(18.dp),
+
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween,
+
+                        verticalAlignment =
+                            Alignment.CenterVertically
+
+                    ) {
+
+                        Column {
+
+                            Text(
+
+                                "Task History",
+
+                                color = Color.White,
+
+                                fontSize = 20.sp,
+
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+
+                                "Last 30 Days",
+
+                                color = Color.White.copy(.8f)
+                            )
+                        }
+
+                        FilledIconButton(
+
+                            onClick = {
+
+                                showHistoryDialog = false
+                            },
+
+                            colors =
+                                IconButtonDefaults.filledIconButtonColors(
+
+                                    containerColor =
+                                        Color.White
+                                )
+                        ) {
+
+                            Icon(
+
+                                Icons.Default.Close,
+
+                                contentDescription = null,
+
+                                tint = Color.Black
+                            )
+                        }
+                    }
+
+                    when (val state = historyState) {
+
+                        is Resource.Loading -> {
+
+                            Box(
+
+                                modifier = Modifier
+                                    .fillMaxSize(),
+
+                                contentAlignment =
+                                    Alignment.Center
+
+                            ) {
+
+                                CircularProgressIndicator()
+                            }
+                        }
+
+                        is Resource.Success -> {
+
+                            val data =
+                                state.data.data
+
+                            if (data.isEmpty()) {
+
+                                Box(
+
+                                    modifier =
+                                        Modifier.fillMaxSize(),
+
+                                    contentAlignment =
+                                        Alignment.Center
+
+                                ) {
+
+                                    Text(
+
+                                        "No History Found",
+
+                                        fontSize = 18.sp,
+
+                                        fontWeight =
+                                            FontWeight.SemiBold
+                                    )
+                                }
+
+                            } else {
+
+                                LazyColumn(
+
+                                    modifier = Modifier
+                                        .fillMaxSize(),
+
+                                    contentPadding =
+                                        PaddingValues(14.dp),
+
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(10.dp)
+
+                                ) {
+
+                                    items(
+
+                                        items = data,
+
+                                        key = { it.sl }
+
+                                    ) { task ->
+
+                                        ElevatedCard(
+
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+
+                                            shape =
+                                                RoundedCornerShape(18.dp),
+
+                                            elevation =
+                                                CardDefaults.elevatedCardElevation(
+                                                    defaultElevation = 4.dp
+                                                )
+                                        ) {
+
+                                            Column(
+
+                                                modifier =
+                                                    Modifier.padding(16.dp)
+                                            ) {
+
+                                                Row(
+
+                                                    modifier =
+                                                        Modifier.fillMaxWidth(),
+
+                                                    horizontalArrangement =
+                                                        Arrangement.SpaceBetween,
+
+                                                    verticalAlignment =
+                                                        Alignment.CenterVertically
+                                                ) {
+
+                                                    Text(
+
+                                                        task.complain_id,
+
+                                                        fontWeight =
+                                                            FontWeight.Bold,
+
+                                                        fontSize = 15.sp
+                                                    )
+
+                                                    SuggestionChip(
+
+                                                        onClick = {},
+
+                                                        enabled = false,
+
+                                                        label = {
+
+                                                            Text(
+
+                                                                task.task_status2
+                                                                    ?: "-"
+                                                            )
+                                                        }
+                                                    )
+                                                }
+
+                                                Spacer(
+                                                    Modifier.height(12.dp)
+                                                )
+
+                                                Text(
+
+                                                    task.client_name ?: "",
+
+                                                    fontWeight =
+                                                        FontWeight.SemiBold,
+
+                                                    fontSize = 16.sp
+                                                )
+
+                                                Spacer(
+                                                    Modifier.height(4.dp)
+                                                )
+
+                                                Text(
+                                                    "Model : ${task.model ?: "-"}"
+                                                )
+
+                                                Text(
+                                                    "Engineer : ${task.assigned_name ?: "-"}"
+                                                )
+
+                                                Text(
+                                                    "Status : ${task.task_status ?: "-"}"
+                                                )
+
+                                                Text(
+                                                    "Workflow : ${task.task_status2 ?: "-"}"
+                                                )
+
+                                                Spacer(
+                                                    Modifier.height(8.dp)
+                                                )
+
+                                                HorizontalDivider()
+
+                                                Spacer(
+                                                    Modifier.height(8.dp)
+                                                )
+
+                                                Text(
+
+                                                    task.complain_datetime ?: "",
+
+                                                    color = Color.Gray,
+
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    item {
+
+                                        Spacer(
+                                            Modifier.height(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        is Resource.Error -> {
+
+                            Box(
+
+                                modifier =
+                                    Modifier.fillMaxSize(),
+
+                                contentAlignment =
+                                    Alignment.Center
+
+                            ) {
+
+                                Text(
+
+                                    state.message ?: "Something went wrong",
+
+                                    color = Color.Red
+                                )
+                            }
+                        }
+
+                        else -> {
+
+                            Box(
+
+                                modifier =
+                                    Modifier.fillMaxSize(),
+
+                                contentAlignment =
+                                    Alignment.Center
+
+                            ) {
+
+                                Text("Loading...")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(showLeaveApprovalDialog){
+
+        LeaveApprovalDialog(
+
+            state=
+
+                vm.managerLeaveState,
+
+            onClose={
+
+                showLeaveApprovalDialog=false
+
+            },
+
+            onApprove={
+
+                vm.approveLeave(
+
+                    token,
+
+                    it,
+
+                    "APPROVE"
+
+                )
+
+            },
+
+            onReject={
+
+                vm.approveLeave(
+
+                    token,
+
+                    it,
+
+                    "REJECT"
+
+                )
+
+            }
+
+        )
+
+    }
+
 }
+
 
 @Composable
 fun EmptyTaskAnimation() {

@@ -17,6 +17,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import com.jminnovatech.core.model.ComplaintListResponse
 import com.jminnovatech.core.model.CompleteTaskRequest
+import com.jminnovatech.core.model.ManagerLeaveResponse
 import com.jminnovatech.core.model.ReachClientRequest
 import com.jminnovatech.core.model.StartTaskRequest
 import com.jminnovatech.core.model.TaskResponse
@@ -67,10 +68,6 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<MyLeavesResponse>
 
-    @POST("api/api/manager-leaves")
-    suspend fun managerLeaves(
-        @Header("Authorization") token: String
-    ): Response<MyLeavesResponse>
 
     @POST("api/api/approve-leave")
     suspend fun approveLeave(
@@ -204,4 +201,13 @@ interface ApiService {
         token: String
 
     ): Response<ComplaintListResponse>
+
+    @POST("api/api/manager-leaves")
+
+    suspend fun managerLeaves(
+
+        @Header("Authorization")
+        token:String
+
+    ):Response<ManagerLeaveResponse>
 }

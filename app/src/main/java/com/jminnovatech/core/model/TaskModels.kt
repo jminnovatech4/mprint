@@ -81,7 +81,7 @@ data class TaskItem(
     val reach_long: String?,
 
     val complete_lat: String?,
-
+    val task_status2: String?,
     val complete_long: String?,
 
     val back_lat: String?,

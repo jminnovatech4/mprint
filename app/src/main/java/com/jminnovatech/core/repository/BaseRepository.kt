@@ -61,10 +61,18 @@ open class BaseRepository {
             RetrofitClient.api.myLeaves("Bearer $token")
         }
 
-    suspend fun managerLeaves(token: String) =
-        safeApiCall {
-            RetrofitClient.api.managerLeaves("Bearer $token")
-        }
+    suspend fun managerLeaves(
+
+        token:String
+
+    )= safeApiCall{
+
+        RetrofitClient.api.managerLeaves(
+
+            "Bearer $token"
+
+        )
+    }
 
     suspend fun approveLeave(
         token: String,

@@ -529,18 +529,18 @@ fun TaskDetailsDialog(
                                 Modifier.height(10.dp)
                             )
 
-                            GradientButton(
-
-                                text = "CANCEL TASK",
-
-                                icon = Icons.Default.Close,
-
-                                color1 = Color(0xFFD32F2F),
-
-                                color2 = Color(0xFFFF5252),
-
-                                onClick = onCancel
-                            )
+//                            GradientButton(
+//
+//                                text = "CANCEL TASK",
+//
+//                                icon = Icons.Default.Close,
+//
+//                                color1 = Color(0xFFD32F2F),
+//
+//                                color2 = Color(0xFFFF5252),
+//
+//                                onClick = onCancel
+//                            )
                         }
                     }
 
